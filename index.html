@@ -657,14 +657,7 @@
                     }
                 });
 
-                // On initial load, mark the last 5 articles as read if no read articles exist
-                if (isInitialLoad && readArticles.size === 0 && articles.length > 0) {
-                    const articlesToMarkAsRead = articles.slice(0, 5);
-                    articlesToMarkAsRead.forEach(article => {
-                        readArticles.add(article.guid);
-                    });
-                    saveReadArticles();
-                }
+
 
                 // Extract unique categories and add new ones to active filters
                 const currentCategories = [...new Set(articles.map(a => a.category))];
