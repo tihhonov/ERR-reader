@@ -11,10 +11,63 @@ interface Article {
     imageUrl: string
 }
 
+type Language = 'et' | 'ru'
+
+interface Translations {
+    title: string
+    subtitle: string
+    loading: string
+    error: string
+    updated: string
+    newsLastHour: string
+    compactView: string
+    unread: string
+    noNews: string
+    justNow: string
+    minutesAgo: (n: number) => string
+    hoursAgo: (n: number) => string
+}
+
+const translations: Record<Language, Translations> = {
+    et: {
+        title: 'ERR Uudised',
+        subtitle: 'Jälgi Eesti viimaseid uudiseid reaalajas',
+        loading: 'Uudiste laadimine...',
+        error: 'Uudiste laadimine ebaõnnestus. Palun proovi hiljem uuesti.',
+        updated: 'Uuendatud',
+        newsLastHour: 'uudist viimase tunni jooksul',
+        compactView: 'Compact view',
+        unread: 'Lugemata',
+        noNews: 'Uudiseid pole veel',
+        justNow: 'just nüüd',
+        minutesAgo: (n: number) => `${n} min tagasi`,
+        hoursAgo: (n: number) => `${n} h tagasi`
+    },
+    ru: {
+        title: 'ERR Новости',
+        subtitle: 'Следите за новостями в режиме реального времени',
+        loading: 'Загрузка новостей...',
+        error: 'Не удалось загрузить новости. Попробуйте позже.',
+        updated: 'Обновлено',
+        newsLastHour: 'новостей за последний час',
+        compactView: 'Compact view',
+        unread: 'Unread',
+        noNews: 'Новостей пока нет',
+        justNow: 'только что',
+        minutesAgo: (n: number) => `${n} мин назад`,
+        hoursAgo: (n: number) => `${n} ч назад`
+    }
+}
+
+const RSS_URLS: Record<Language, string> = {
+    et: 'https://www.err.ee/rss',
+    ru: 'https://rus.err.ee/rss'
+}
+
 const CORS_PROXY = 'https://corsproxy.io/?'
-const RSS_URL = 'https://rus.err.ee/rss'
 const REFRESH_INTERVAL = 60000 // 60 seconds
 const READ_ARTICLES_KEY = 'err-news-read-articles'
+const LANGUAGE_KEY = 'err-news-language'
 
 function App() {
     const [articles, setArticles] = useState<Article[]>([])
@@ -24,6 +77,15 @@ function App() {
     const [readArticles, setReadArticles] = useState<Set<string>>(new Set())
     const [activeCategories, setActiveCategories] = useState<Set<string>>(new Set())
     const [isCompactView, setIsCompactView] = useState(false)
+    const [language, setLanguage] = useState<Language>('ru')
+
+    // Load language from localStorage
+    useEffect(() => {
+        const storedLang = localStorage.getItem(LANGUAGE_KEY)
+        if (storedLang === 'et' || storedLang === 'ru') {
+            setLanguage(storedLang)
+        }
+    }, [])
 
     // Load read articles from localStorage
     useEffect(() => {
@@ -47,7 +109,7 @@ function App() {
 
     const fetchNews = async (isInitialLoad = false) => {
         try {
-            const response = await fetch(`${CORS_PROXY}${RSS_URL} `)
+            const response = await fetch(`${CORS_PROXY}${RSS_URLS[language]}`)
             if (!response.ok) {
                 throw new Error('Failed to fetch news')
             }
@@ -112,10 +174,10 @@ function App() {
         }
     }
 
-    // Initial fetch
+    // Initial fetch and refetch when language changes
     useEffect(() => {
         fetchNews(true)
-    }, [])
+    }, [language])
 
     // Auto-refresh
     useEffect(() => {
@@ -153,11 +215,13 @@ function App() {
             const diffMins = Math.floor(diffMs / 60000)
             const diffHours = Math.floor(diffMs / 3600000)
 
-            if (diffMins < 1) return 'только что'
-            if (diffMins < 60) return `${diffMins} мин назад`
-            if (diffHours < 24) return `${diffHours} ч назад`
+            const t = translations[language]
+            if (diffMins < 1) return t.justNow
+            if (diffMins < 60) return t.minutesAgo(diffMins)
+            if (diffHours < 24) return t.hoursAgo(diffHours)
 
-            return date.toLocaleDateString('ru-RU', {
+            const locale = language === 'et' ? 'et-EE' : 'ru-RU'
+            return date.toLocaleDateString(locale, {
                 day: 'numeric',
                 month: 'short',
                 hour: '2-digit',
@@ -170,7 +234,8 @@ function App() {
 
     const formatLastUpdated = () => {
         if (!lastUpdated) return ''
-        return lastUpdated.toLocaleTimeString('ru-RU', {
+        const locale = language === 'et' ? 'et-EE' : 'ru-RU'
+        return lastUpdated.toLocaleTimeString(locale, {
             hour: '2-digit',
             minute: '2-digit',
             second: '2-digit'
@@ -198,12 +263,23 @@ function App() {
         return new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime()
     })
 
+    const t = translations[language]
+
+    const handleLanguageChange = (lang: Language) => {
+        setLanguage(lang)
+        localStorage.setItem(LANGUAGE_KEY, lang)
+        // Clear articles and categories when switching language
+        setArticles([])
+        setActiveCategories(new Set())
+        setLoading(true)
+    }
+
     if (loading) {
         return (
             <div className="app">
                 <div className="loading">
                     <div className="loading-spinner"></div>
-                    <p className="loading-text">Загрузка новостей...</p>
+                    <p className="loading-text">{t.loading}</p>
                 </div>
             </div>
         )
@@ -214,7 +290,7 @@ function App() {
             <div className="app">
                 <div className="error">
                     <div className="error-icon">⚠️</div>
-                    <p>{error}</p>
+                    <p>{t.error}</p>
                 </div>
             </div>
         )
@@ -223,20 +299,20 @@ function App() {
     return (
         <div className="app">
             <header className="header">
-                <h1>ERR Новости</h1>
-                <p>Следите за последними новостями Эстонии в режиме реального времени</p>
+                <h1>{t.title}</h1>
+                <p>{t.subtitle}</p>
 
                 <div className="stats-container">
                     {lastUpdated && (
                         <div className="stat-badge">
                             <span className="status-dot"></span>
-                            <span>Обновлено: {formatLastUpdated()}</span>
+                            <span>{t.updated}: {formatLastUpdated()}</span>
                         </div>
                     )}
 
                     <div className="stat-badge">
                         <span className="count">{getArticlesLastHour()}</span>
-                        <span>новостей за последний час</span>
+                        <span>{t.newsLastHour}</span>
                     </div>
                 </div>
 
@@ -255,19 +331,36 @@ function App() {
                 )}
 
                 <div className="view-toggle">
-                    <span className="toggle-label">Compact view</span>
-                    <div
-                        className={`toggle-switch ${isCompactView ? 'active' : ''}`}
-                        onClick={() => setIsCompactView(!isCompactView)}
-                    >
-                        <div className="toggle-slider"></div>
+                    <div className="toggle-group">
+                        <button
+                            className={`lang-btn ${language === 'et' ? 'active' : ''}`}
+                            onClick={() => handleLanguageChange('et')}
+                        >
+                            Estonian
+                        </button>
+                        <button
+                            className={`lang-btn ${language === 'ru' ? 'active' : ''}`}
+                            onClick={() => handleLanguageChange('ru')}
+                        >
+                            Russian
+                        </button>
+                    </div>
+
+                    <div className="toggle-group">
+                        <span className="toggle-label">{t.compactView}</span>
+                        <div
+                            className={`toggle-switch ${isCompactView ? 'active' : ''}`}
+                            onClick={() => setIsCompactView(!isCompactView)}
+                        >
+                            <div className="toggle-slider"></div>
+                        </div>
                     </div>
                 </div>
             </header>
 
             {sortedArticles.length === 0 ? (
                 <div className="empty-state">
-                    <p>Новостей пока нет</p>
+                    <p>{t.noNews}</p>
                 </div>
             ) : (
                 <div className={isCompactView ? 'news-list' : 'news-grid'}>
@@ -280,7 +373,7 @@ function App() {
                                 className={`article-card ${isUnread ? 'unread' : ''} ${isCompactView ? 'compact' : ''}`}
                                 onClick={() => handleArticleClick(article)}
                             >
-                                {isUnread && <div className="unread-indicator">Unread</div>}
+                                {isUnread && <div className="unread-indicator">{t.unread}</div>}
                                 {!isUnread && <div className="read-indicator">✓</div>}
 
                                 {!isCompactView && article.imageUrl && (
