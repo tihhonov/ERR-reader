@@ -11,7 +11,7 @@ interface Article {
     imageUrl: string
 }
 
-type Language = 'et' | 'ru'
+type Language = 'et' | 'ru' | 'en'
 
 interface Translations {
     title: string
@@ -56,12 +56,27 @@ const translations: Record<Language, Translations> = {
         justNow: 'только что',
         minutesAgo: (n: number) => `${n} мин назад`,
         hoursAgo: (n: number) => `${n} ч назад`
+    },
+    en: {
+        title: 'ERR News',
+        subtitle: 'Follow the latest Estonian news in real-time',
+        loading: 'Loading news...',
+        error: 'Failed to load news. Please try again later.',
+        updated: 'Updated',
+        newsLastHour: 'news in the last hour',
+        compactView: 'Compact view',
+        unread: 'Unread',
+        noNews: 'No news yet',
+        justNow: 'just now',
+        minutesAgo: (n: number) => `${n} min ago`,
+        hoursAgo: (n: number) => `${n} h ago`
     }
 }
 
 const RSS_URLS: Record<Language, string> = {
     et: 'https://www.err.ee/rss',
-    ru: 'https://rus.err.ee/rss'
+    ru: 'https://rus.err.ee/rss',
+    en: 'https://news.err.ee/rss'
 }
 
 const CORS_PROXY = 'https://corsproxy.io/?'
@@ -82,7 +97,7 @@ function App() {
     // Load language from localStorage
     useEffect(() => {
         const storedLang = localStorage.getItem(LANGUAGE_KEY)
-        if (storedLang === 'et' || storedLang === 'ru') {
+        if (storedLang === 'et' || storedLang === 'ru' || storedLang === 'en') {
             setLanguage(storedLang)
         }
     }, [])
@@ -220,7 +235,7 @@ function App() {
             if (diffMins < 60) return t.minutesAgo(diffMins)
             if (diffHours < 24) return t.hoursAgo(diffHours)
 
-            const locale = language === 'et' ? 'et-EE' : 'ru-RU'
+            const locale = language === 'et' ? 'et-EE' : language === 'ru' ? 'ru-RU' : 'en-US'
             return date.toLocaleDateString(locale, {
                 day: 'numeric',
                 month: 'short',
@@ -234,7 +249,7 @@ function App() {
 
     const formatLastUpdated = () => {
         if (!lastUpdated) return ''
-        const locale = language === 'et' ? 'et-EE' : 'ru-RU'
+        const locale = language === 'et' ? 'et-EE' : language === 'ru' ? 'ru-RU' : 'en-US'
         return lastUpdated.toLocaleTimeString(locale, {
             hour: '2-digit',
             minute: '2-digit',
@@ -343,6 +358,12 @@ function App() {
                             onClick={() => handleLanguageChange('ru')}
                         >
                             Russian
+                        </button>
+                        <button
+                            className={`lang-btn ${language === 'en' ? 'active' : ''}`}
+                            onClick={() => handleLanguageChange('en')}
+                        >
+                            English
                         </button>
                     </div>
 
