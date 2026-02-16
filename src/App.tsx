@@ -74,12 +74,11 @@ const translations: Record<Language, Translations> = {
 }
 
 const RSS_URLS: Record<Language, string> = {
-    et: 'https://www.err.ee/rss',
-    ru: 'https://rus.err.ee/rss',
-    en: 'https://news.err.ee/rss'
+    et: '/api/rss',
+    ru: '/api/rus-rss',
+    en: '/api/en-rss'
 }
 
-const CORS_PROXY = 'https://corsproxy.io/?'
 const REFRESH_INTERVAL = 60000 // 60 seconds
 const READ_ARTICLES_KEY = 'err-news-read-articles'
 const LANGUAGE_KEY = 'err-news-language'
@@ -124,7 +123,7 @@ function App() {
 
     const fetchNews = async (isInitialLoad = false) => {
         try {
-            const response = await fetch(`${CORS_PROXY}${RSS_URLS[language]}`)
+            const response = await fetch(RSS_URLS[language])
             if (!response.ok) {
                 throw new Error('Failed to fetch news')
             }
